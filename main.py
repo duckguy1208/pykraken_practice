@@ -4,8 +4,12 @@ import math
 
 # Initialize Kraken
 kn.init()
-# In 0.4.0, create() takes title: str, resolution: Vec2, scaled: bool
 kn.window.create("Rust Runner", kn.Vec2(1280, 720))
+
+# Load fonts
+font_small = kn.Font("kraken-clean", 20)
+font_medium = kn.Font("kraken-clean", 32)
+font_large = kn.Font("kraken-clean", 64)
 
 class GameState:
     MENU = 0
@@ -22,14 +26,14 @@ class Button:
         self.is_hovered = False
 
     def update(self, mouse_pos):
-        self.is_hovered = kn.collision.overlap(mouse_pos, self.rect)
+        self.is_hovered = self.rect.collide_point(mouse_pos)
         return self.is_hovered and kn.mouse.is_just_pressed(kn.MouseButton.M_LEFT)
 
     def draw(self):
-        color = self.hover_color if self.is_hovered else self.color
-        kn.draw.rect(self.rect, color)
+        draw_color = self.hover_color if self.is_hovered else self.color
+        kn.draw.rect(self.rect, draw_color)
         text_pos = kn.Vec2(self.rect.x + 20, self.rect.y + 15)
-        kn.draw.text(self.text, text_pos, kn.Color.WHITE)
+        font_small.draw(self.text, text_pos, kn.color.WHITE)
 
 class Vehicle:
     def __init__(self, pos):
@@ -44,7 +48,7 @@ class Vehicle:
         
         self.engine_health = 1.0
         self.wheel_health = 1.0
-        self.gravity = 800.0 # px/s^2
+        self.gravity = 800.0
         self.ground_y = 600
         
     def update(self, dt, obstacles):
@@ -52,84 +56,98 @@ class Vehicle:
         self.engine_health -= 0.005 * dt
         self.wheel_health -= 0.002 * dt
         
-        # Movement Input
+        # Movement
         acceleration = 1200.0 * self.engine_health
         if kn.key.is_pressed(kn.Scancode.S_d):
             self.vel.x += acceleration * dt
         elif kn.key.is_pressed(kn.Scancode.S_a):
             self.vel.x -= (acceleration * 0.5) * dt
             
-        # Air Balance / Rotation
+        # Air Rotation
         if kn.key.is_pressed(kn.Scancode.S_q):
             self.rot_vel -= 5.0 * dt * self.engine_health
         if kn.key.is_pressed(kn.Scancode.S_e):
             self.rot_vel += 5.0 * dt * self.engine_health
             
-        # Apply Gravity
         self.vel.y += self.gravity * dt
-        
-        # Friction/Drag
         self.vel.x *= (1.0 - 0.5 * dt)
         self.rot_vel *= (1.0 - 1.0 * dt)
         
-        # Integrate Position
         self.pos += self.vel * dt
         self.rot += self.rot_vel * dt
         
-        # Simple Ground Collision
-        car_bottom = self.pos.y + (self.height / 2) + self.wheel_radius
+        # Collision
+        car_bottom = self.pos.y + 45 # Approximate bottom including wheels
         if car_bottom > self.ground_y:
-            self.pos.y = self.ground_y - (self.height / 2) - self.wheel_radius
+            self.pos.y = self.ground_y - 45
             self.vel.y = 0
-            # Friction on ground
             self.vel.x *= (1.0 - 2.0 * dt)
-            # Alignment to ground (fake suspension feel)
+            # Match ground rotation (horizontal ground = 0 radians)
             self.rot = kn.math.lerp(self.rot, 0.0, 5.0 * dt)
             self.rot_vel = kn.math.lerp(self.rot_vel, 0.0, 10.0 * dt)
 
-        # Obstacle Collision (Simple AABB)
-        car_rect = kn.Rect(self.pos.x - 50, self.pos.y - 20, 100, 40)
+        car_rect = kn.Rect(kn.Vec2(self.pos.x - 50, self.pos.y - 20), kn.Vec2(100, 40))
         for obs in obstacles:
-            if kn.collision.overlap(car_rect, obs):
-                # Simple bounce back
+            if car_rect.collide_rect(obs):
                 self.vel.x = -self.vel.x * 0.5
                 self.vel.y -= 200
                 self.engine_health -= 0.05
 
     def draw(self):
-        # Draw Chassis (Rotated)
-        # Note: We simulate rotation by drawing a rectangle slightly offset
-        # In a full game, we'd use sprites or a custom shader for rotation
-        chassis_rect = kn.Rect(self.pos.x - 50, self.pos.y - 20, 100, 40)
-        kn.draw.rect(chassis_rect, kn.Color("#7f8c8d"))
+        deg = math.degrees(self.rot)
         
-        # Draw Wheels
-        back_wheel = kn.Circle(self.pos.x - 35, self.pos.y + 25, self.wheel_radius)
-        front_wheel = kn.Circle(self.pos.x + 35, self.pos.y + 25, self.wheel_radius)
-        kn.draw.circle(back_wheel, kn.Color("#2c3e50"))
-        kn.draw.circle(front_wheel, kn.Color("#2c3e50"))
+        # Calculate rotated chassis corners
+        corners = [
+            kn.Vec2(-50, -20), kn.Vec2(50, -20), 
+            kn.Vec2(50, 20), kn.Vec2(-50, 20)
+        ]
+        rotated_corners = []
+        for c in corners:
+            rc = kn.Vec2(c.x, c.y)
+            rc.rotate(deg)
+            rotated_corners.append(self.pos + rc)
+            
+        # Draw Rotated Chassis
+        chassis_color = kn.Color(127, 140, 141)
+        # Flicker if engine is dying
+        if self.engine_health < 0.3 and random.random() < 0.2:
+            chassis_color = kn.color.RED
+            
+        kn.draw.polygon(rotated_corners, chassis_color)
+        
+        # Calculate rotated wheel positions
+        back_off = kn.Vec2(-35, 25)
+        front_off = kn.Vec2(35, 25)
+        back_off.rotate(deg)
+        front_off.rotate(deg)
+        
+        back_pos = self.pos + back_off
+        front_pos = self.pos + front_off
+        
+        kn.draw.circle(kn.Circle(back_pos, self.wheel_radius), kn.color.BLACK)
+        kn.draw.circle(kn.Circle(front_pos, self.wheel_radius), kn.color.BLACK)
 
 # Game State Variables
 current_state = GameState.MENU
 car = None
 obstacles = []
 camera = kn.Camera()
+default_camera = kn.Camera()
 win_distance = 6000
 ground_y = 600
 
 # UI Buttons
-start_button = Button(kn.Rect(540, 300, 200, 60), "START GAME", kn.Color("#2c3e50"), kn.Color("#34495e"))
-restart_button = Button(kn.Rect(540, 400, 200, 60), "RESTART", kn.Color("#27ae60"), kn.Color("#2ecc71"))
-menu_button = Button(kn.Rect(540, 480, 200, 60), "MAIN MENU", kn.Color("#7f8c8d"), kn.Color("#95a5a6"))
+start_button = Button(kn.Rect(kn.Vec2(540, 300), kn.Vec2(200, 60)), "START GAME", kn.Color(44, 62, 80), kn.Color(52, 73, 94))
+restart_button = Button(kn.Rect(kn.Vec2(540, 400), kn.Vec2(200, 60)), "RESTART", kn.Color(39, 174, 96), kn.Color(46, 204, 113))
+menu_button = Button(kn.Rect(kn.Vec2(540, 480), kn.Vec2(200, 60)), "MAIN MENU", kn.Color(127, 140, 141), kn.Color(149, 165, 166))
 
 def reset_game():
     global car, obstacles, current_state
     car = Vehicle(kn.Vec2(200, 400))
     obstacles = []
-    # Generate some obstacles along the road
     for i in range(10):
-        obs_x = 1000 + i * 500 + random.uniform(-100, 100)
-        obstacles.append(kn.Rect(obs_x, ground_y - 40, 40, 40))
+        obs_x = 1000 + i * 800 + random.uniform(-100, 100)
+        obstacles.append(kn.Rect(kn.Vec2(obs_x, ground_y - 40), kn.Vec2(40, 40)))
     current_state = GameState.PLAYING
 
 while kn.window.is_open():
@@ -143,15 +161,10 @@ while kn.window.is_open():
             
     elif current_state == GameState.PLAYING:
         car.update(dt, obstacles)
-        
-        # Win Condition
         if car.pos.x > win_distance:
             current_state = GameState.WON
-            
-        # Lose Conditions
         if car.engine_health <= 0 or car.wheel_health <= 0 or abs(car.rot) > 2.0:
             current_state = GameState.LOST
-            
         camera.pos = car.pos - kn.Vec2(640, 450)
         
     elif current_state in [GameState.WON, GameState.LOST]:
@@ -161,38 +174,38 @@ while kn.window.is_open():
             current_state = GameState.MENU
 
     # Rendering
-    kn.renderer.clear(kn.Color("#1a1a1a"))
+    kn.renderer.clear(kn.Color(26, 26, 26))
     
     if current_state == GameState.MENU:
-        kn.draw.text("RUST RUNNER", kn.Vec2(530, 200), kn.Color.WHITE)
+        font_large.draw("RUST RUNNER", kn.Vec2(480, 200), kn.color.WHITE)
         start_button.draw()
         
     elif current_state == GameState.PLAYING:
-        with kn.renderer.use_camera(camera):
-            # Ground
-            kn.draw.rect(kn.Rect(-1000, ground_y, win_distance + 3000, 200), kn.Color("#3d2b1f"))
-            # Finish Line
-            kn.draw.rect(kn.Rect(win_distance, 0, 20, 1000), kn.Color("#f1c40f"))
-            
-            # Obstacles
-            for obs in obstacles:
-                kn.draw.rect(obs, kn.Color("#e67e22"))
-            
-            car.draw()
+        camera.set()
+        # Ground
+        kn.draw.rect(kn.Rect(kn.Vec2(-1000, ground_y), kn.Vec2(win_distance + 3000, 200)), kn.Color(61, 43, 31))
+        # Finish Line
+        kn.draw.rect(kn.Rect(kn.Vec2(win_distance, 0), kn.Vec2(20, 1000)), kn.color.YELLOW)
         
+        for obs in obstacles:
+            kn.draw.rect(obs, kn.Color(230, 126, 34))
+        
+        car.draw()
+        
+        default_camera.set()
         # HUD
-        kn.draw.text(f"Engine: {max(0, car.engine_health*100):.1f}%", kn.Vec2(20, 20), kn.Color.WHITE)
-        kn.draw.text(f"Tires: {max(0, car.wheel_health*100):.1f}%", kn.Vec2(20, 50), kn.Color.WHITE)
-        kn.draw.text(f"Distance: {int(car.pos.x)} / {win_distance}", kn.Vec2(20, 80), kn.Color.WHITE)
+        font_small.draw(f"Engine: {max(0, car.engine_health*100):.1f}%", kn.Vec2(20, 20), kn.color.WHITE)
+        font_small.draw(f"Tires: {max(0, car.wheel_health*100):.1f}%", kn.Vec2(20, 50), kn.color.WHITE)
+        font_small.draw(f"Distance: {int(car.pos.x)} / {win_distance}", kn.Vec2(20, 80), kn.color.WHITE)
 
     elif current_state == GameState.WON:
-        kn.draw.text("YOU SURVIVED!", kn.Vec2(540, 200), kn.Color("#f1c40f"))
+        font_medium.draw("YOU SURVIVED!", kn.Vec2(540, 200), kn.color.YELLOW)
         restart_button.draw()
         menu_button.draw()
         
     elif current_state == GameState.LOST:
         reason = "TOTAL DECAY" if car.engine_health <= 0 else "FLIPPED OVER"
-        kn.draw.text(f"VEHICLE LOST: {reason}", kn.Vec2(480, 200), kn.Color("#e74c3c"))
+        font_medium.draw(f"VEHICLE LOST: {reason}", kn.Vec2(480, 200), kn.color.RED)
         restart_button.draw()
         menu_button.draw()
         
