@@ -1,6 +1,12 @@
-# Rust Runner Practice MVP
+# Wither's Wake
 
-This is a prototype for the Rust Runner game jam submission, built using the [Kraken Engine](https://krakenengine.org/).
+A high-stakes platformer prototype where essence is your only lifeline. Built using the [Kraken Engine](https://krakenengine.org/).
+
+## The Core Mechanic: Essence
+In *Wither's Wake*, your life essence is constantly decaying.
+- **Stable Platforms:** Stand on gray platforms to slowly recharge your essence.
+- **Bloom Platforms:** Left-click to create temporary platforms. Creating a platform costs 20% essence.
+- **Decay:** Essence decays naturally over time. If it reaches zero, you wither.
 
 ## Setup Instructions
 
@@ -32,7 +38,7 @@ python main.py
 ```
 
 ## Controls
-- **D**: Drive Forward
-- **A**: Reverse
-- **Q / E**: Balance Chassis (Air Rotation)
-- **Goal**: Reach 6,000 units distance without flipping or decaying!
+- **A / D**: Move Left/Right
+- **SPACE**: Jump
+- **L-CLICK**: Bloom temporary platform (Costs 20% Essence)
+- **Goal**: Reach the far side (X > 1000) while standing on stable ground to win!
