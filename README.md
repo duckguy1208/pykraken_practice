@@ -1,6 +1,6 @@
-# Rust Runner Practice MVP
+# Wither's Wake
 
-This is a prototype for the Rust Runner game jam submission, built using the [Kraken Engine](https://krakenengine.org/).
+This is a prototype for the Wither's Wake game, built using the [Kraken Engine](https://krakenengine.org/).
 
 ## Setup Instructions
 
@@ -32,7 +32,7 @@ python main.py
 ```
 
 ## Controls
-- **D**: Drive Forward
-- **A**: Reverse
-- **Q / E**: Balance Chassis (Air Rotation)
-- **Goal**: Reach 6,000 units distance without flipping or decaying!
+- **A / D**: Move Left / Right
+- **SPACE**: Jump
+- **L-CLICK**: Bloom Platform (Consume Essence)
+- **Goal**: Navigate to the platform at distance 1,000 without withering away! Essence decays over time but refills on stable ground.
