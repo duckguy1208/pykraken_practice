@@ -10,4 +10,5 @@ Welcome to the PyKraken Practice project.
 - **CLI Quoting (PowerShell):** When posting multiline comments via `gh issue comment`, use the `-F` flag with a temporary file to avoid complex shell quoting issues in the Windows environment.
 - **Project Pivot (Rust Runner -> Wither's Wake):** The project pivoted from a racing game to a platformer. `README.md` and `main.py` should always be checked for consistency with the current jam theme.
 - **GitHub Project Automation (V2):** Use `gh project field-list` and `gh project item-list --format json` to find the correct `field-id` and `single-select-option-id` for status updates. `gh project item-edit` does not support `--owner` directly; use `--id` and `--project-id`.
+- **Project Item Discrepancy:** The project 'PyKraken Spring Jam 2026' (ID `PVT_kwHOAXt6nM4BVFW2`) may appear empty or fully completed if viewed through standard filters. Ensure all items (including drafts and converted issues) are audited using GraphQL for absolute state verification.
 
