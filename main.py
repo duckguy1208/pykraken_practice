@@ -58,6 +58,8 @@ class Player:
         self.vel.x = move_dir * self.speed
         
         self.vel.y += self.gravity * dt
+        self.essence -= 0.02 * dt # Constant decay
+        self.essence = max(0.0, self.essence)
         self.pos.x += self.vel.x * dt
         self.sync_rect()
         
